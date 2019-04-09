@@ -1,0 +1,87 @@
+---
+title: "Let’s Generalize About Fans"
+author: "Faith Benamy"
+date: "4/5/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source('config.R')
+```
+
+```{r}
+library(tidyverse)
+library(rtweet)
+library(fuzzywuzzyR) 
+library(rlist)
+```
+
+```{r}
+top_5 <- search_tweets("#CrazyExTop5", n = 1000, include_rts = FALSE) 
+``` 
+```{r}
+cleaned_rankings <- top_5 %>% 
+                      pull(text) %>%
+                      str_extract_all("[12345][^{]+[12345][^{]+(\\z)") %>%
+                      unlist() %>% 
+                      str_remove_all("^\\n") %>% 
+                      str_remove_all("(\\n)[^\\n15]+$") %>% 
+                      str_remove_all("[^\x01-\x7F]") %>%
+                      str_replace_all("([a-z\\?!\\.]) {1,}([12345])",
+                                      "\\1\n\\2") %>%
+                      str_split("\\n") %>% 
+                      unlist() %>%
+                      .[str_detect(., "([12345](\\.|\\))) [A-Za-z]")] %>% 
+                      str_trim()
+```
+
+```{r}
+rank_song_df <- cleaned_rankings %>% 
+                  str_to_lower() %>% 
+                  tibble(cleaned_tweets = .) %>% 
+                  separate(cleaned_tweets, c("rank", "song_name"), 
+                           sep = "\\.|\\) ") %>%
+                  mutate(song_name = str_remove_all(song_name,
+                                                    "[[:punct:]]")) %>% 
+                  mutate(song_name = str_remove_all(song_name, 
+                                                    "httpst") %>% 
+                  str_trim()) %>% 
+                  mutate(rank = str_sub(rank, start = 1, end = 1)) %>% 
+                  filter(str_length(song_name) >5, song_name != "get it trending youths", str_detect(song_name," "))
+```
+
+```{r}
+songs_df <- read_csv("track_info.csv", col_types = 
+                       ) %>%  
+              mutate(song_name_lower = str_to_lower(name)) %>% 
+              mutate(song_name_lower = str_remove_all(song_name_lower,
+                                                      "[[:punct:]]")) %>% 
+              mutate(song_name_lower = str_remove(song_name_lower,
+                                                  "(feat.*)"))
+#songs_df <- rbind(songs_df, combine(list.append(163, rep(NA, 18),"Season 4", NA, "real life fighting is awkward")))
+#songs_df <- rbind(songs_df,list.append(rep(NA, 18), "Season 4", "['Rachel Bloom']", "eleven o'clock"))
+
+```
+
+```{r}
+fuzzy_match_df <- rank_song_df %>% 
+                    rowwise() %>% 
+                    mutate(fuzzy_match = as.character(GetCloseMatches(string =
+                                             song_name,
+                                             sequence_strings =
+                                              songs_df$song_name_lower,
+                                             n = 3, cutoff = 0.6))[1])
+                             
+```
+
+```{r}
+GetCloseMatches(string = rank_song_df$song_name[12],
+                                             sequence_strings =
+                                               songs_df$song_name_lower,
+                                             n = 3, cutoff = 0.6)[1]
+```
+
+```{r}
+View(fuzzy_match_df %>% filter(is.na(fuzzy_match)))
+```

@@ -1,0 +1,12 @@
+name: generalizeaboutfans
+title: generalizeaboutfans
+username:
+account: fbenamy
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 849740
+bundleId: 1997265
+url: https://fbenamy.shinyapps.io/generalizeaboutfans/
+when: 1554800781.63639
+asMultiple: FALSE
+asStatic: FALSE
